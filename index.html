@@ -78,6 +78,20 @@ footer h2{margin-bottom:10px}
 footer .btn-red{font-size:1.1rem;padding:16px 38px;margin:14px 0 40px;box-shadow:0 12px 28px rgba(214,51,43,.3)}
 .credit{color:var(--muted);font-size:.88rem;border-top:1px solid var(--line);padding-top:24px}
 
+/* PLACES TABLE */
+.table-wrap{background:var(--white);border:1px solid var(--line);border-radius:18px;overflow-x:auto}
+#places{width:100%;border-collapse:collapse;font-size:.92rem;min-width:720px}
+#places th,#places td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}
+#places th{background:var(--red-soft);color:var(--red);font-weight:700;white-space:nowrap}
+#places tbody tr:last-child td{border-bottom:none}
+#places tbody tr:hover{background:var(--bg)}
+#places a{color:var(--red);font-weight:600;text-decoration:none}
+#places a:hover{text-decoration:underline}
+.rating-badge{display:inline-flex;align-items:center;gap:3px;background:var(--red-soft);color:var(--red);font-weight:700;padding:3px 9px;border-radius:999px;font-size:.85rem}
+.review-count{color:var(--muted);font-size:.85rem}
+.cat-badge{display:inline-block;background:var(--bg);border:1px solid var(--line);color:var(--ink);padding:2px 10px;border-radius:999px;font-size:.82rem;white-space:nowrap}
+.nama-cell{font-weight:600;color:var(--ink)}
+
 @media (max-width:760px){
   .compare,.caps{grid-template-columns:1fr}
   section{padding:48px 0}
@@ -173,12 +187,28 @@ footer .btn-red{font-size:1.1rem;padding:16px 38px;margin:14px 0 40px;box-shadow
   </div>
 </section>
 
+<!-- PLACES DATA (Supabase) -->
+<section id="places-section">
+  <div class="wrap">
+    <h2>Places Data</h2>
+    <p class="sub">Live data loaded from the database.</p>
+    <div class="table-wrap">
+<table id="places">
+  <thead>
+    <tr><th>Nama</th><th>Kategori</th><th>Rating</th><th>Review</th><th>Kota</th><th>Telepon</th><th>Maps</th></tr>
+  </thead>
+  <tbody><tr><td colspan="7">Memuat data...</td></tr></tbody>
+</table>
+    </div>
+  </div>
+</section>
+
 <!-- 5. FOOTER & CTA -->
 <footer>
   <div class="wrap">
     <h2>Ready to Improve Faster?</h2>
     <p class="sub" style="margin-bottom:0">Get IELTS Writing feedback without the long wait.</p>
-       <a href="https://wa.me/628116941919" target="_blank" rel="noopener" class="btn btn-red">Get in Touch →</a>
+    <a href="https://instagram.com/krismalim" target="_blank" rel="noopener" class="btn btn-red">Get in Touch →</a>
     <p class="credit">Built with AI · AI Builder Bootcamp Showcase</p>
   </div>
 </footer>
@@ -237,6 +267,114 @@ async function runScenario(key) {
 }
 
 buttons.forEach(btn => btn.addEventListener("click", () => runScenario(btn.dataset.s)));
+</script>
+
+<script>
+  const SUPABASE_URL = 'https://vzcvjcxbkzbsljchvmep.supabase.co'; // ← isi dengan SUPABASE_URL kamu
+  const SUPABASE_KEY = 'sb_publishable__I5KchSrCQ823WSd3f2a3Q_NTL7YWyu'; // publishable key, BUKAN secret key
+
+  async function loadPlaces() {
+    const tbody = document.querySelector('#places tbody');
+    try {
+      const res = await fetch(
+        SUPABASE_URL + '/rest/v1/places?select=*&order=reviews_count.desc.nullslast&limit=100',
+        { headers: { apikey: SUPABASE_KEY } }
+      );
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const rows = await res.json();
+
+      tbody.replaceChildren();
+
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Belum ada data.</td></tr>';
+        return;
+      }
+
+      for (const p of rows) {
+        const tr = document.createElement('tr');
+
+        // Nama — bold
+        const tdNama = document.createElement('td');
+        tdNama.className = 'nama-cell';
+        tdNama.textContent = p.title ?? '-';
+        tr.appendChild(tdNama);
+
+        // Kategori — pill badge
+        const tdKat = document.createElement('td');
+        if (p.category_name) {
+          const badge = document.createElement('span');
+          badge.className = 'cat-badge';
+          badge.textContent = p.category_name;
+          tdKat.appendChild(badge);
+        } else {
+          tdKat.textContent = '-';
+        }
+        tr.appendChild(tdKat);
+
+        // Rating — star badge
+        const tdRating = document.createElement('td');
+        if (p.total_score != null) {
+          const rb = document.createElement('span');
+          rb.className = 'rating-badge';
+          rb.textContent = '★ ' + Number(p.total_score).toFixed(1);
+          tdRating.appendChild(rb);
+        } else {
+          tdRating.textContent = '-';
+        }
+        tr.appendChild(tdRating);
+
+        // Review count — muted
+        const tdRev = document.createElement('td');
+        if (p.reviews_count != null) {
+          const rv = document.createElement('span');
+          rv.className = 'review-count';
+          rv.textContent = Number(p.reviews_count).toLocaleString('id-ID') + ' ulasan';
+          tdRev.appendChild(rv);
+        } else {
+          tdRev.textContent = '-';
+        }
+        tr.appendChild(tdRev);
+
+        // Kota
+        const tdKota = document.createElement('td');
+        tdKota.textContent = p.city ?? '-';
+        tr.appendChild(tdKota);
+
+        // Telepon — link
+        const tdTel = document.createElement('td');
+        if (p.phone) {
+          const a = document.createElement('a');
+          a.href = 'tel:' + p.phone;
+          a.textContent = p.phone;
+          tdTel.appendChild(a);
+        } else {
+          tdTel.textContent = '-';
+        }
+        tr.appendChild(tdTel);
+
+        // Maps — link dengan arrow
+        const tdMaps = document.createElement('td');
+        if (p.url && p.url.startsWith('https://')) {
+          const a = document.createElement('a');
+          a.href = p.url;
+          a.target = '_blank';
+          a.rel = 'noopener';
+          a.textContent = 'Buka →';
+          tdMaps.appendChild(a);
+        } else {
+          tdMaps.textContent = '-';
+        }
+        tr.appendChild(tdMaps);
+
+        tbody.appendChild(tr);
+      }
+    } catch (e) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--red);padding:24px">⚠️ Gagal memuat data. Cek koneksi atau Supabase URL.</td></tr>';
+      console.error(e);
+    }
+  }
+
+  loadPlaces();
 </script>
 </body>
 </html>
